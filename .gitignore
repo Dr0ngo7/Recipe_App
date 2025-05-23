@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+
+# Expo ve cache dosyaları
+.expo/
+.expo-shared/
+
+# Metro cache
+metro-cache/
+package-lock.json
+
+# Android build (EAS için)
+*.apk
+*.aab
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
