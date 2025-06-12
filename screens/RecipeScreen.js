@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLayoutEffect } from 'react';
-
 import {
   View,
   Text,
@@ -9,38 +8,56 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import recipes from '../data/recipes.json';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default function RecipeScreen({ route, navigation }) {
-  const newRecipe = route?.params?.newRecipe;
-
-const allRecipes = newRecipe ? [newRecipe, ...recipes] : recipes;
-
-  const ingredients = route?.params?.ingredients || '';
-  const ingredientList = ingredients
-    .toLowerCase()
-    .split(/[\s,]+/)
-    .map(i => i.trim())
-    .filter(Boolean);
-
+  const [recipes, setRecipes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Hepsi');
 
+  const ingredientList = route?.params?.ingredients || [];
+  const matchMode = route?.params?.matchMode || 'OR';
+
   const categories = ['Hepsi', 'Kahvaltı', 'Ana Yemek', 'Tatlı'];
-//HomeScreen.js'deki malzeme seçimi
-  const filteredRecipes = allRecipes.filter(recipe => {
-    const matchesIngredients =
-      ingredientList.length === 0 ||
-      ingredientList.some(ing =>
-        recipe.description.toLowerCase().includes(ing)
-      );
-  //HomeScreen.js'deki kategori seçimi
+
+  useEffect(() => {
+    const fetchApprovedRecipes = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'pendingRecipes'));
+        const approved = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(recipe => recipe.status === true);
+        setRecipes(approved);
+      } catch (error) {
+        console.error('Tarifler alınamadı:', error);
+      }
+    };
+
+    fetchApprovedRecipes();
+  }, []);
+
+  const filteredRecipes = recipes.filter(recipe => {
     const matchesCategory =
       selectedCategory === 'Hepsi' || recipe.category === selectedCategory;
-  
-    return matchesIngredients && matchesCategory;
+
+    const recipeIngredients = recipe.ingredients || [];
+
+    let matchesIngredients = true;
+    if (ingredientList.length > 0) {
+      if (matchMode === 'AND') {
+        matchesIngredients = ingredientList.every(ing =>
+          recipeIngredients.includes(ing)
+        );
+      } else {
+        matchesIngredients = ingredientList.some(ing =>
+          recipeIngredients.includes(ing)
+        );
+      }
+    }
+
+    return matchesCategory && matchesIngredients;
   });
-  
-//Tarif Ekleme Butonu
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -50,10 +67,9 @@ const allRecipes = newRecipe ? [newRecipe, ...recipes] : recipes;
       )
     });
   }, [navigation]);
-  
+
   return (
     <View style={styles.container}>
-      {/*Kategori filtreleme*/}
       <Text style={styles.label}>Kategori Seç:</Text>
       <Picker
         selectedValue={selectedCategory}
@@ -64,10 +80,10 @@ const allRecipes = newRecipe ? [newRecipe, ...recipes] : recipes;
           <Picker.Item label={cat} value={cat} key={cat} />
         ))}
       </Picker>
-      {/*Tarifleri listeleme*/}
+
       <FlatList
         data={filteredRecipes}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.item}

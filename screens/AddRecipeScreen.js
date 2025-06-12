@@ -5,8 +5,10 @@ import { Picker } from '@react-native-picker/picker';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ScrollView } from 'react-native';
+import { useEffect } from 'react';
 
-export default function AddRecipeScreen({ navigation }) {
+export default function AddRecipeScreen({ navigation, route }){
+  const [selectedIngredients, setSelectedIngredients] = useState([]);
   const [image, setImage] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -16,7 +18,14 @@ export default function AddRecipeScreen({ navigation }) {
   const [calories, setCalories] = useState('');
   const [category, setCategory] = useState('Kahvaltı');
 
-  const pickImage = async () => {
+
+  useEffect(() => {
+  if (route.params?.selectedIngredients) {
+    setSelected(route.params.selectedIngredients); 
+  }
+}, []);
+
+    const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       Alert.alert("İzin Gerekli", "Resim seçebilmek için galeri erişimi gerekli.");
@@ -33,6 +42,12 @@ export default function AddRecipeScreen({ navigation }) {
       setImage(result.assets[0].uri);
     }
   };
+  
+  const handleRemoveIngredient = (itemToRemove) => {
+  const updated = selectedIngredients.filter(item => item !== itemToRemove);
+  setSelectedIngredients(updated);
+  setIngredients(updated.join(', '));
+};
 
   const handleAddRecipe = async () => {
     if (!title || !description || !time || !calories) {
@@ -47,16 +62,26 @@ export default function AddRecipeScreen({ navigation }) {
         time: parseInt(time),
         calories: parseInt(calories),
         category,
-        ingredients: ingredients.split(',').map(item => item.trim()),
+        ingredients: selectedIngredients,
         image: image || '',
         difficulty,
         isFavorite: false,
-        status: 'waiting',
+        status: false,
         createdAt: serverTimestamp()
       });
 
-      Alert.alert('Gönderildi', 'Tarifiniz onaya gönderildi.');
-      navigation.goBack();
+   Alert.alert('Gönderildi', 'Tarifiniz onaya gönderildi.', [
+  {
+    text: 'Tamam',
+    onPress: () => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }]
+      });
+    }
+  }
+]);
+
     } catch (error) {
       console.error('Firestore hata:', error);
       Alert.alert('Hata', 'Tarif gönderilirken bir hata oluştu.');
@@ -79,8 +104,39 @@ export default function AddRecipeScreen({ navigation }) {
       <Text style={styles.label}>Açıklama:</Text>
       <TextInput style={styles.input} value={description} onChangeText={setDescription} multiline />
 
-      <Text style={styles.label}>Malzemeler (virgülle):</Text>
-      <TextInput style={styles.input} value={ingredients} onChangeText={setIngredients} />
+      <View style={styles.inlineContainer}>
+  <Text style={styles.label}>Malzemeler:</Text>
+  <Button
+  title={`Malzeme Seç (${selectedIngredients.length})`}
+  onPress={() =>
+    navigation.navigate('IngredientSelect', {
+      selectedIngredients: selectedIngredients, 
+      onSelectIngredients: (items) => {
+        setSelectedIngredients(items);
+        setIngredients(items.join(', '));
+      }
+    })
+  }
+/>
+
+
+</View>
+
+{selectedIngredients.length > 0 && (
+  <View style={styles.tagContainer}>
+    {selectedIngredients.map((item, idx) => (
+      <TouchableOpacity
+        key={idx}
+        onPress={() => handleRemoveIngredient(item)}
+        style={styles.tag}
+      >
+        <Text style={styles.tagText}>{item} ✕</Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+)}
+
+
 
       <Text style={styles.label}>Süre (dk):</Text>
       <TextInput style={styles.input} value={time} onChangeText={setTime} keyboardType="numeric" />
@@ -116,5 +172,32 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
     marginBottom: 10
-  }
+  },
+
+  inlineContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 10
+},
+tagContainer: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 6,
+  marginBottom: 10
+},
+tag: {
+  backgroundColor: '#e0e0e0',
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 12,
+  marginRight: 6,
+  marginTop: 6
+},
+tagText: {
+  fontSize: 14,
+  color: '#333'
+}
+
+
 });
