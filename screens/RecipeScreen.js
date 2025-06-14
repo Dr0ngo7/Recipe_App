@@ -11,12 +11,15 @@ import { Picker } from '@react-native-picker/picker';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
-export default function RecipeScreen({ route, navigation }) {
+// 🔁 context'ten seçilen malzemeler ve eşleşme modu alınır
+import { useSelectedIngredients } from '../context/SelectedIngredientsContext';
+
+export default function RecipeScreen({ navigation }) {
   const [recipes, setRecipes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Hepsi');
 
-  const ingredientList = route?.params?.ingredients || [];
-  const matchMode = route?.params?.matchMode || 'OR';
+  // 🌍 context'ten seçilen malzemeler ve eşleşme modu alınır
+  const { selectedIngredients, matchMode } = useSelectedIngredients();
 
   const categories = ['Hepsi', 'Kahvaltı', 'Ana Yemek', 'Tatlı'];
 
@@ -37,31 +40,28 @@ export default function RecipeScreen({ route, navigation }) {
   }, []);
 
   const filteredRecipes = recipes.filter(recipe => {
+    const recipeIngredients = recipe.ingredients?.map(i => i.toLowerCase()) || [];
+
+    const matchesIngredients =
+      selectedIngredients.length === 0 ||
+      (matchMode === 'AND'
+        ? selectedIngredients.every(ing => recipeIngredients.includes(ing.toLowerCase()))
+        : selectedIngredients.some(ing => recipeIngredients.includes(ing.toLowerCase()))
+      );
+
     const matchesCategory =
       selectedCategory === 'Hepsi' || recipe.category === selectedCategory;
 
-    const recipeIngredients = recipe.ingredients || [];
-
-    let matchesIngredients = true;
-    if (ingredientList.length > 0) {
-      if (matchMode === 'AND') {
-        matchesIngredients = ingredientList.every(ing =>
-          recipeIngredients.includes(ing)
-        );
-      } else {
-        matchesIngredients = ingredientList.some(ing =>
-          recipeIngredients.includes(ing)
-        );
-      }
-    }
-
-    return matchesCategory && matchesIngredients;
+    return matchesIngredients && matchesCategory;
   });
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('AddRecipe')} style={{ marginRight: 10 }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AddRecipe')}
+          style={{ marginRight: 10 }}
+        >
           <Text style={{ fontSize: 16, color: '#007AFF' }}>➕ Ekle</Text>
         </TouchableOpacity>
       )

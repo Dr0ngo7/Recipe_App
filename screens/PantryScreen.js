@@ -2,13 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Button } from 'react-native';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useSelectedIngredients } from '../context/SelectedIngredientsContext';
 
-export default function HomeScreen({ navigation }) {
+export default function PantryScreen({ navigation }) {
   const [ingredientsData, setIngredientsData] = useState({});
   const [filteredData, setFilteredData] = useState({});
   const [searchText, setSearchText] = useState('');
-  const [selectedIngredients, setSelectedIngredients] = useState([]);
-  const [matchMode, setMatchMode] = useState('AND'); // veya 'OR'
+
+  // GLOBAL STATE
+  const {
+    selectedIngredients,
+    setSelectedIngredients,
+    matchMode,
+    setMatchMode
+  } = useSelectedIngredients();
 
   useEffect(() => {
     const fetchIngredients = async () => {
@@ -18,7 +25,7 @@ export default function HomeScreen({ navigation }) {
         data[doc.id] = doc.data().items;
       });
       setIngredientsData(data);
-      setFilteredData(data); // ilk durumda tümünü göster
+      setFilteredData(data);
     };
 
     fetchIngredients();
@@ -51,8 +58,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleListRecipes = () => {
     navigation.navigate('Recipes', {
-      ingredients: selectedIngredients,
-      matchMode: matchMode
+      applyFilter: true // sadece butonla geldiğini belirtmek için
     });
   };
 
@@ -106,7 +112,6 @@ export default function HomeScreen({ navigation }) {
         </View>
       ))}
 
-      {/* Tarifleri Listele butonu */}
       <Button
         title={`Tarifleri Listele (${selectedIngredients.length})`}
         onPress={handleListRecipes}
