@@ -66,7 +66,7 @@ export default function AddRecipeScreen({ navigation, route }) {
     await addDoc(collection(db, 'pendingRecipes'), {
       title,
       description,
-      instructions, // <-- burada
+      instructions, 
       time: parseInt(time),
       calories: parseInt(calories),
       category,

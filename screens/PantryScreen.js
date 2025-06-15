@@ -56,6 +56,8 @@ export default function PantryScreen({ navigation }) {
     }
   }, [searchText, ingredientsData]);
 
+
+  
   const toggleIngredient = (ingredient) => {
     setSelectedIngredients((prev) =>
       prev.includes(ingredient)

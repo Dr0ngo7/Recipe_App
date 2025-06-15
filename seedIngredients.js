@@ -15,16 +15,24 @@ const db = getFirestore(app);
 
 const yemis = [
   
-   "dana ciğer", "kuzu ciğer", "tavuk ciğeri", "işkembe", "kokoreç", "kuzu paça", "mumbar", "tavuk taşlık",
-    "dana dil", "kuzu böbrek", "kuzu kelle", "bağırsak", "dana böbrek", "kuzu işkembe", "dana kelle",
-    "koç yumurtası", "kuzu gömleği", "kuzu yürek", "uykuluk", "ördek ciğeri"
+   "yumurta", "un", "şeker", "domates", "patates",
+    "süt", "yoğurt", "tereyağ", "soğan", "sarımsak",
+    "pul biber", "ayçiçek yağı", "kabartma tozu",
+    "zeytinyağı", "pirinç", "beyaz peynir", "ekmek",
+    "limon", "kakao", "makarna", "bulgur",
+    "kuru soğan", "domates salçası", "kuru nane",
+    "bal", "kekik", "vanilya", "kaşar", "maydanoz",
+    "siyah zeytin", "kimyon", "margarin",
+    "yeşil biber", "salatalık", "kırmızı mercimek",
+    "nane", "salça", "tarçın", "pilavlık pirinç",
+    "bitkisel yağ","tuz"
 ];
 
 async function upload() {
   try {
-    await setDoc(doc(db, 'ingredients', 'Sakatatlar'), {
+    await setDoc(doc(db, 'ingredients', 'Temel'), {
       items: yemis,
-      label: "Sakatatlar"
+      label: "Temel"
     });
     
     

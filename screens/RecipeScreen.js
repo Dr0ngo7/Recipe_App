@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -10,18 +9,21 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-
-// 🔁 context'ten seçilen malzemeler ve eşleşme modu alınır
 import { useSelectedIngredients } from '../context/SelectedIngredientsContext';
 
 export default function RecipeScreen({ navigation }) {
   const [recipes, setRecipes] = useState([]);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Hepsi');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('Hepsi');
 
-  // 🌍 context'ten seçilen malzemeler ve eşleşme modu alınır
+  const [sortField, setSortField] = useState(null); // 'calories', 'time', 'ingredients'
+  const [sortOrder, setSortOrder] = useState('none'); // 'asc', 'desc', 'none'
+
   const { selectedIngredients, matchMode } = useSelectedIngredients();
 
   const categories = ['Hepsi', 'Kahvaltı', 'Ana Yemek', 'Tatlı'];
+  const difficulties = ['Hepsi', 'Kolay', 'Orta', 'Zor'];
 
   useEffect(() => {
     const fetchApprovedRecipes = async () => {
@@ -39,21 +41,58 @@ export default function RecipeScreen({ navigation }) {
     fetchApprovedRecipes();
   }, []);
 
-  const filteredRecipes = recipes.filter(recipe => {
-    const recipeIngredients = recipe.ingredients?.map(i => i.toLowerCase()) || [];
+  const handleSortToggle = (field) => {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortOrder('desc');
+    } else {
+      if (sortOrder === 'desc') {
+        setSortOrder('asc');
+      } else if (sortOrder === 'asc') {
+        setSortOrder('none');
+        setSortField(null);
+      } else {
+        setSortOrder('desc');
+      }
+    }
+  };
 
-    const matchesIngredients =
-      selectedIngredients.length === 0 ||
-      (matchMode === 'AND'
-        ? selectedIngredients.every(ing => recipeIngredients.includes(ing.toLowerCase()))
-        : selectedIngredients.some(ing => recipeIngredients.includes(ing.toLowerCase()))
-      );
+  const getSortSymbol = (field) => {
+    if (sortField !== field) return '⬍';
+    if (sortOrder === 'asc') return '🔼';
+    if (sortOrder === 'desc') return '🔽';
+    return '⬍';
+  };
 
-    const matchesCategory =
-      selectedCategory === 'Hepsi' || recipe.category === selectedCategory;
+  const filteredRecipes = recipes
+    .filter(recipe => {
+      const defaultIngredients = ['su'];
 
-    return matchesIngredients && matchesCategory;
-  });
+      const recipeIngredients = [...(recipe.ingredients?.map(i => i.toLowerCase()) || []),...defaultIngredients];
+
+      const matchesIngredients =
+        selectedIngredients.length === 0 ||
+        (matchMode === 'AND'
+          ? selectedIngredients.every(ing => recipeIngredients.includes(ing.toLowerCase()))
+          : selectedIngredients.some(ing => recipeIngredients.includes(ing.toLowerCase()))
+        );
+
+      const matchesCategory =
+        selectedCategory === 'Hepsi' || recipe.category === selectedCategory;
+
+      const matchesDifficulty =
+        selectedDifficulty === 'Hepsi' || recipe.difficulty === selectedDifficulty;
+
+      return matchesIngredients && matchesCategory && matchesDifficulty;
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'none' || !sortField) return 0;
+
+      const fieldA = sortField === 'ingredients' ? a.ingredients.length : a[sortField];
+      const fieldB = sortField === 'ingredients' ? b.ingredients.length : b[sortField];
+
+      return sortOrder === 'asc' ? fieldA - fieldB : fieldB - fieldA;
+    });
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -70,16 +109,59 @@ export default function RecipeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Kategori Seç:</Text>
-      <Picker
-        selectedValue={selectedCategory}
-        onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-        style={styles.picker}
-      >
-        {categories.map((cat) => (
-          <Picker.Item label={cat} value={cat} key={cat} />
-        ))}
-      </Picker>
+      <TouchableOpacity onPress={() => setFilterOpen(prev => !prev)}>
+        <Text style={styles.filterToggle}>
+          {filterOpen ? '🔽 Filtreyi Gizle' : '🔼 Filtre'}
+        </Text>
+      </TouchableOpacity>
+
+      {filterOpen && (
+        <View style={styles.advancedFilter}>
+          <Text style={styles.label}>Kategori:</Text>
+          <Picker
+            selectedValue={selectedCategory}
+            onValueChange={(itemValue) => setSelectedCategory(itemValue)}
+            style={styles.picker}
+          >
+            {categories.map((cat) => (
+              <Picker.Item label={cat} value={cat} key={cat} />
+            ))}
+          </Picker>
+
+          <Text style={styles.label}>Zorluk:</Text>
+          <Picker
+            selectedValue={selectedDifficulty}
+            onValueChange={(value) => setSelectedDifficulty(value)}
+            style={styles.picker}
+          >
+            {difficulties.map((diff) => (
+              <Picker.Item label={diff} value={diff} key={diff} />
+            ))}
+          </Picker>
+
+          <Text style={styles.label}>Sıralama:</Text>
+          <View style={styles.sortRow}>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => handleSortToggle('calories')}
+            >
+              <Text>Kalori {getSortSymbol('calories')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => handleSortToggle('time')}
+            >
+              <Text>Süre {getSortSymbol('time')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => handleSortToggle('ingredients')}
+            >
+              <Text>Malzeme {getSortSymbol('ingredients')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <FlatList
         data={filteredRecipes}
@@ -114,5 +196,29 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: 'bold'
+  },
+  filterToggle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#007AFF'
+  },
+  advancedFilter: {
+    backgroundColor: '#f1f1f1',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16
+  },
+  sortRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 8
+  },
+  sortButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#ddd',
+    borderRadius: 6
   }
 });
