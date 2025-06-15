@@ -5,7 +5,9 @@ import { Picker } from '@react-native-picker/picker';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import * as FileSystem from 'expo-file-system';
 import { storage } from '../firebase';
+
 
 export default function AddRecipeScreen({ navigation, route }) {
   const [selectedIngredients, setSelectedIngredients] = useState([]);
@@ -19,12 +21,11 @@ export default function AddRecipeScreen({ navigation, route }) {
   const [calories, setCalories] = useState('');
   const [category, setCategory] = useState('Kahvaltı');
 
-  useEffect(() => {
-    if (route.params?.selectedIngredients) {
-      setSelectedIngredients(route.params.selectedIngredients);
-      setIngredients(route.params.selectedIngredients.join(', '));
-    }
-  }, [route.params?.selectedIngredients]);
+ const handleIngredientsUpdate = (newIngredients) => {
+  setSelectedIngredients(newIngredients);
+  setIngredients(newIngredients.join(', '));
+};
+
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -103,17 +104,23 @@ export default function AddRecipeScreen({ navigation, route }) {
   }
 };
 
-
 const uploadImageAsync = async (uri) => {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  try {
+    const response = await fetch(uri);
+    const blob = await response.blob();
 
-  const filename = `recipes/${Date.now()}.jpg`;
-  const storageRef = ref(storage, filename);
-  await uploadBytes(storageRef, blob);
+    const filename = `recipes/${Date.now()}.jpg`;
+    const storageRef = ref(storage, filename);
 
-  return await getDownloadURL(storageRef);
+    await uploadBytes(storageRef, blob);
+    const downloadUrl = await getDownloadURL(storageRef);
+    return downloadUrl;
+  } catch (error) {
+    console.error("uploadImageAsync hata:", error);
+    throw error;
+  }
 };
+
 
 
   return (
@@ -144,17 +151,14 @@ const uploadImageAsync = async (uri) => {
       <View style={styles.inlineContainer}>
         <Text style={styles.label}>Malzemeler:</Text>
         <Button
-          title={`Malzeme Seç (${selectedIngredients.length})`}
-          onPress={() =>
-            navigation.navigate('IngredientSelect', {
-              selectedIngredients: selectedIngredients,
-              onSelectIngredients: (items) => {
-                setSelectedIngredients(items);
-                setIngredients(items.join(', '));
-              }
-            })
-          }
-        />
+  title={`Malzeme Seç (${selectedIngredients.length})`}
+  onPress={() =>
+    navigation.navigate('IngredientSelect', {
+      selectedIngredients: selectedIngredients,
+      onSelectIngredients: handleIngredientsUpdate
+    })
+  }
+/>
       </View>
 
       {selectedIngredients.length > 0 && (

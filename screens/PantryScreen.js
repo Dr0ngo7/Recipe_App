@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Button } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  Button
+} from 'react-native';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useSelectedIngredients } from '../context/SelectedIngredientsContext';
@@ -8,8 +16,8 @@ export default function PantryScreen({ navigation }) {
   const [ingredientsData, setIngredientsData] = useState({});
   const [filteredData, setFilteredData] = useState({});
   const [searchText, setSearchText] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState({});
 
-  // GLOBAL STATE
   const {
     selectedIngredients,
     setSelectedIngredients,
@@ -58,71 +66,108 @@ export default function PantryScreen({ navigation }) {
 
   const handleListRecipes = () => {
     navigation.navigate('Recipes', {
-      applyFilter: true // sadece butonla geldiğini belirtmek için
+      applyFilter: true
     });
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <TextInput
-        placeholder="Malzeme ara..."
-        value={searchText}
-        onChangeText={setSearchText}
-        style={styles.searchInput}
-      />
+    <View style={styles.wrapper}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <TextInput
+          placeholder="Malzeme ara..."
+          value={searchText}
+          onChangeText={setSearchText}
+          style={styles.searchInput}
+        />
 
-      {/* VE / VEYA mantığı seçimi */}
-      <View style={styles.modeToggleContainer}>
-        <TouchableOpacity
-          style={[styles.modeButton, matchMode === 'AND' && styles.modeButtonActive]}
-          onPress={() => setMatchMode('AND')}
-        >
-          <Text style={matchMode === 'AND' ? styles.modeButtonTextActive : styles.modeButtonText}>Tümü (VE)</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modeButton, matchMode === 'OR' && styles.modeButtonActive]}
-          onPress={() => setMatchMode('OR')}
-        >
-          <Text style={matchMode === 'OR' ? styles.modeButtonTextActive : styles.modeButtonText}>Biri (VEYA)</Text>
-        </TouchableOpacity>
-      </View>
-
-      {Object.entries(filteredData).map(([category, items]) => (
-        <View key={category} style={styles.categoryBox}>
-          <Text style={styles.categoryTitle}>{category}</Text>
-          <View style={styles.tagContainer}>
-            {items.map((item, idx) => {
-              const isSelected = selectedIngredients.includes(item);
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => toggleIngredient(item)}
-                  style={[
-                    styles.tag,
-                    isSelected && styles.tagSelected
-                  ]}
-                >
-                  <Text style={isSelected ? styles.tagTextSelected : styles.tagText}>
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity
+            style={[styles.modeButton, matchMode === 'AND' && styles.modeButtonActive]}
+            onPress={() => setMatchMode('AND')}
+          >
+            <Text style={matchMode === 'AND' ? styles.modeButtonTextActive : styles.modeButtonText}>Tümü (VE)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeButton, matchMode === 'OR' && styles.modeButtonActive]}
+            onPress={() => setMatchMode('OR')}
+          >
+            <Text style={matchMode === 'OR' ? styles.modeButtonTextActive : styles.modeButtonText}>Biri (VEYA)</Text>
+          </TouchableOpacity>
         </View>
-      ))}
 
-      <Button
-        title={`Tarifleri Listele (${selectedIngredients.length})`}
-        onPress={handleListRecipes}
-        disabled={selectedIngredients.length === 0}
-      />
-    </ScrollView>
+        {Object.entries(filteredData).map(([category, items]) => {
+          const isExpanded = expandedCategories[category];
+          const visibleItems = isExpanded ? items : items.slice(0, 15);
+          const remainingCount = items.length - 15;
+
+          return (
+            <View key={category} style={styles.categoryBox}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.categoryTitle}>{category}</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    setExpandedCategories(prev => ({
+                      ...prev,
+                      [category]: !prev[category]
+                    }))
+                  }
+                >
+                  <Text style={{ fontSize: 18 }}>{isExpanded ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.tagContainer}>
+                {visibleItems.map((item, idx) => {
+                  const isSelected = selectedIngredients.includes(item);
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => toggleIngredient(item)}
+                      style={[styles.tag, isSelected && styles.tagSelected]}
+                    >
+                      <Text style={isSelected ? styles.tagTextSelected : styles.tagText}>{item}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {!isExpanded && remainingCount > 0 && (
+                  <TouchableOpacity
+                    style={[styles.tag, { backgroundColor: '#ddd' }]}
+                    onPress={() =>
+                      setExpandedCategories(prev => ({
+                        ...prev,
+                        [category]: true
+                      }))
+                    }
+                  >
+                    <Text style={{ fontWeight: 'bold' }}>+{remainingCount} Daha</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.fixedButton}>
+        <Button
+          title={`Tarifleri Listele (${selectedIngredients.length})`}
+          onPress={handleListRecipes}
+          disabled={selectedIngredients.length === 0}
+        />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  wrapper: {
+    flex: 1
+  },
+  container: {
+    padding: 16,
+    paddingBottom: 80
+  },
   searchInput: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -190,5 +235,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold'
+  },
+  fixedButton: {
+    position: 'absolute',
+    bottom: 10,
+    left: 16,
+    right: 16
   }
 });

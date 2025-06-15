@@ -11,6 +11,8 @@ import RecipeScreen from '../screens/RecipeScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import AddRecipeScreen from '../screens/AddRecipeScreen';
 import IngredientSelectScreen from '../screens/IngredientSelectScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -19,12 +21,9 @@ function MainTabs() {
   return (
     <Tab.Navigator>
       <Tab.Screen name="Pantry" component={PantryScreen} options={{ title: 'Kiler' }} />
-      <Tab.Screen
-        name="Recipes"
-        component={RecipeScreen}
-        initialParams={{ ingredients: [], matchMode: 'OR' }}
-        options={{ title: 'Tarifler' }}
-      />
+      <Tab.Screen name="Recipes" component={RecipeScreen} nitialParams={{ ingredients: [], matchMode: 'OR' }} options={{ title: 'Tarifler' }}/>
+       <Tab.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoriler' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
     </Tab.Navigator>
   );
 }
