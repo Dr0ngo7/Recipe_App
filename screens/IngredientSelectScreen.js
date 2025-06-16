@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -9,16 +9,12 @@ export default function IngredientSelectScreen({ navigation, route }) {
   const [searchText, setSearchText] = useState('');
   const [filteredCategories, setFilteredCategories] = useState({});
 
-  // Toggle seçimi
   const toggleSelect = (item) => {
     setSelected((prev) =>
-      prev.includes(item)
-        ? prev.filter(i => i !== item)
-        : [...prev, item]
+      prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
     );
   };
 
-  // Geri AddRecipe'e veri gönder
   const handleDone = () => {
     if (route.params?.onSelectIngredients) {
       route.params.onSelectIngredients(selected);
@@ -26,33 +22,33 @@ export default function IngredientSelectScreen({ navigation, route }) {
     navigation.goBack();
   };
 
-  // Seçili malzemeleri geri yükle
   useEffect(() => {
     if (route.params?.selectedIngredients) {
       setSelected(route.params.selectedIngredients);
     }
   }, []);
 
-  // Firestore'dan malzemeleri al
-  useEffect(() => {
-    const fetchIngredients = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, 'ingredients'));
-        const data = {};
-        snapshot.forEach(doc => {
-          data[doc.id] = doc.data().items;
-        });
-        setIngredientCategories(data);
-        setFilteredCategories(data);
-      } catch (error) {
-        console.error('Malzemeler alınamadı:', error);
-      }
-    };
+ useEffect(() => {
+  const fetchIngredients = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'ingredients'));
+      const data = {};
+      snapshot.forEach(doc => {
+        const { label, items } = doc.data();
+        if (label && items) {
+          data[label] = items; // ← label'ı başlık olarak kullan
+        }
+      });
+      setIngredientCategories(data);
+      setFilteredCategories(data);
+    } catch (error) {
+      console.error('Malzemeler alınamadı:', error);
+    }
+  };
 
-    fetchIngredients();
-  }, []);
+  fetchIngredients();
+}, []);
 
-  // Arama filtresi
   useEffect(() => {
     if (searchText.trim() === '') {
       setFilteredCategories(ingredientCategories);
@@ -71,113 +67,136 @@ export default function IngredientSelectScreen({ navigation, route }) {
   }, [searchText, ingredientCategories]);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.wrapper}>
       <TextInput
         placeholder="Malzeme ara..."
         value={searchText}
         onChangeText={setSearchText}
         style={styles.searchInput}
+        placeholderTextColor="#636e72"
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {Object.keys(filteredCategories).length > 0 &&
-          Object.entries(filteredCategories).map(([category, items]) => (
-            <View key={category}>
-              <Text style={styles.categoryTitle}>{category}</Text>
+        {Object.entries(filteredCategories).map(([category, items]) => (
+          <View key={category} style={styles.categoryBox}>
+            <Text style={styles.categoryTitle}>{category}</Text>
+            <View style={styles.tagContainer}>
               {items.map(item => (
                 <TouchableOpacity
                   key={item}
                   onPress={() => toggleSelect(item)}
                   style={[
-                    styles.item,
-                    selected.includes(item) && styles.selectedItem
+                    styles.tag,
+                    selected.includes(item) && styles.tagSelected
                   ]}
                 >
-                  <Text style={selected.includes(item) ? styles.selectedText : styles.itemText}>
+                  <Text style={selected.includes(item) ? styles.tagTextSelected : styles.tagText}>
                     {item}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-          ))}
+          </View>
+        ))}
       </ScrollView>
 
-      {/* Sabit buton */}
-      <View style={styles.fixedButtonContainer}>
-        <TouchableOpacity
-          onPress={handleDone}
-          style={styles.fixedButton}
-        >
-          <Text style={styles.buttonText}>
-            Seçilen ({selected.length}) Malzemeyle Devam Et
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <View style={styles.ButtonContainer}>
+  <TouchableOpacity onPress={handleDone} style={styles.submitButton}>
+    <Text style={styles.buttonText}>
+      Seçilen ({selected.length}) Malzemeyle Devam Et
+    </Text>
+  </TouchableOpacity>
+</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 8 : 20,
   },
   searchInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    margin: 16,
-    backgroundColor: '#fff'
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#dcdde1'
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 120,
+    paddingBottom: 120
+  },
+  categoryBox: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2
   },
   categoryTitle: {
-    fontWeight: 'bold',
     fontSize: 18,
-    marginTop: 20,
-    marginBottom: 8,
+    fontWeight: '600',
+    color: '#2d3436',
+    marginBottom: 10
   },
-  item: {
-    padding: 10,
-    marginVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#aaa',
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6
   },
-  selectedItem: {
-    backgroundColor: '#cde',
-    borderColor: '#46f',
+  tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#dfe6e9',
+    marginBottom: 6,
+    marginRight: 6
   },
-  itemText: {
-    fontSize: 16,
+  tagSelected: {
+    backgroundColor: '#74b9ff'
   },
-  selectedText: {
-    fontSize: 16,
-    color: '#000',
+  tagText: {
+    color: '#2d3436'
+  },
+  tagTextSelected: {
+    color: '#2d3436',
     fontWeight: 'bold'
   },
-  fixedButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-  },
-  fixedButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
+ButtonContainer: {
+  position: 'absolute',
+  bottom: 45, // <- Yukarı alındı
+  width: '100%',
+  alignItems: 'center', // Ortaladı
+  zIndex: 10 // Önde kalması için
+},
+submitButton: {
+  backgroundColor: '#0984e3',
+  paddingVertical: 14,
+  paddingHorizontal: 20,
+  borderRadius: 10,
+  alignItems: 'center',
+  width: '90%', // Genişliği biraz içeride tut
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 3,
+  elevation: 3
+},
+buttonText: {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: 'bold'
+}
+
 });

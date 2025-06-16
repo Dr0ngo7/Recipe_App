@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "recipe-fix-app",
+    "name": "Tarif Uygulaması",
     "slug": "recipe-fix-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/appicon.png",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"

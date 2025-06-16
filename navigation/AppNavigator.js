@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
+import { Ionicons } from '@expo/vector-icons'; // ← ikonlar için
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -19,10 +20,44 @@ const Tab = createBottomTabNavigator();
 
 function MainTabs() {
   return (
-    <Tab.Navigator>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Pantry') {
+            iconName = focused ? 'list' : 'list-outline';
+          } else if (route.name === 'Recipes') {
+            iconName = focused ? 'restaurant' : 'restaurant-outline';
+          } else if (route.name === 'Favorites') {
+            iconName = focused ? 'heart' : 'heart-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#0984e3',
+        tabBarInactiveTintColor: '#b2bec3',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500'
+        },
+        tabBarStyle: {
+          paddingVertical: 6,
+          height: 85,
+        },
+      })}
+    >
       <Tab.Screen name="Pantry" component={PantryScreen} options={{ title: 'Kiler' }} />
-      <Tab.Screen name="Recipes" component={RecipeScreen} nitialParams={{ ingredients: [], matchMode: 'OR' }} options={{ title: 'Tarifler' }}/>
-       <Tab.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoriler' }} />
+      <Tab.Screen
+        name="Recipes"
+        component={RecipeScreen}
+        initialParams={{ ingredients: [], matchMode: 'OR' }}
+        options={{ title: 'Tarifler' }}
+      />
+      <Tab.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoriler' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
     </Tab.Navigator>
   );
